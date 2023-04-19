@@ -52,4 +52,6 @@ app.get("/video", function (req, res) {
     videoStream.pipe(res);
 });
 
-app.listen(3000);
+app.listen(3000, function () {
+    console.log("Streaimg API listening on port 3000!");
+});
