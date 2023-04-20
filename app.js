@@ -34,7 +34,7 @@ app.get("/video", function (req, res) {
     if (!range) {
         res.status(400).send("Requires Range header");
     }
-    const videoPath = `/opt/media/${req.query.id}`;
+    const videoPath = `/opt/spirit-team-media/${req.query.id}`;
     const videoSize = fs.statSync(videoPath).size;
     console.log('videoSize', videoSize);
     const CHUNK_SIZE = 10 ** 6;
