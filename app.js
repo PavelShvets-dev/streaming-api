@@ -34,8 +34,8 @@ app.get("/video", function (req, res) {
     if (!range) {
         res.status(400).send("Requires Range header");
     }
-    const videoPath = req.query.id;
-    const videoSize = fs.statSync(`/opt/media/${videoPath}`).size;
+    const videoPath = `/opt/media/${req.query.id}`;
+    const videoSize = fs.statSync(videoPath).size;
     console.log('videoSize', videoSize);
     const CHUNK_SIZE = 10 ** 6;
     const start = Number(range.replace(/\D/g, ""));
@@ -48,7 +48,7 @@ app.get("/video", function (req, res) {
         "Content-Type": "video/mp4",
     };
     res.writeHead(206, headers);
-    const videoStream = fs.createReadStream(`/opt/media/${videoPath}`, { start, end });
+    const videoStream = fs.createReadStream(videoPath, { start, end });
     videoStream.pipe(res);
 });
 
