@@ -1,5 +1,5 @@
 const express = require('express');
-const fs = require('fs');
+const fs = require('graceful-fs');
 const cors = require('cors');
 const app = express();
 
@@ -23,8 +23,9 @@ app.get('/', (req, res) => {
 
 app.get('/video', (req, res) => {
 
-    // Listing 3.
-    const options = {};
+    const options = {
+        autoClose: true
+    };
 
     let start;
     let end;
