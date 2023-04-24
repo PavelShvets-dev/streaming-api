@@ -106,6 +106,7 @@ app.get('/video', (req, res) => {
 
 
             fileStream.pipe(res);
+            fileStream.unpipe(res);
         }
     });
 });
