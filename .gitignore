@@ -1,3 +1,19 @@
+<<<<<<< HEAD
+=======
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+!.vscode/*.code-snippets
+
+# Local History for Visual Studio Code
+.history/
+
+# Built Visual Studio Code Extensions
+*.vsix
+
+>>>>>>> 84cd4be0f58c78bbb58183c297f58057151a3182
 # Logs
 logs
 *.log
@@ -104,12 +120,15 @@ dist
 .temp
 .cache
 
+<<<<<<< HEAD
 # vitepress build output
 **/.vitepress/dist
 
 # vitepress cache directory
 **/.vitepress/cache
 
+=======
+>>>>>>> 84cd4be0f58c78bbb58183c297f58057151a3182
 # Docusaurus cache and generated files
 .docusaurus
 
