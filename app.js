@@ -3,113 +3,86 @@ const fs = require('graceful-fs');
 const cors = require('cors');
 const app = express();
 
+// CORS configuration
 const corsOptions = {
     origin: '*',
-    optionsSuccessStatus: 200 // some legacy browsers (IE11, various SmartTVs) choke on 204
-}
+    optionsSuccessStatus: 200
+};
 
 app.use(cors(corsOptions));
 app.use(express.static("public"));
 
-app.use(function (req, res, next) {
-    res.header("Access-Control-Allow-Origin", "*");
-    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
-    next();
+app.get('/favicon.ico', (req, res) => {
+    res.status(204).end(); // No Content
 });
 
+// Serve HTML
 app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
+// Video streaming endpoint
 app.get('/video', (req, res) => {
-
-    const options = {
-        autoClose: true
-    };
-
-    let start;
-    let end;
-
-    const range = req.headers.range;
-    if (range) {
-        const bytesPrefix = "bytes=";
-        if (range.startsWith(bytesPrefix)) {
-            const bytesRange = range.substring(bytesPrefix.length);
-            const parts = bytesRange.split("-");
-            if (parts.length === 2) {
-                const rangeStart = parts[0] && parts[0].trim();
-                if (rangeStart && rangeStart.length > 0) {
-                    options.start = start = parseInt(rangeStart);
-                }
-                const rangeEnd = parts[1] && parts[1].trim();
-                if (rangeEnd && rangeEnd.length > 0) {
-                    options.end = end = parseInt(rangeEnd);
-                }
-            }
-        }
-    }
-
-    res.setHeader("content-type", "video/mp4");
-
-    const filePath = `/opt/spirit-team-media/${req.query.id}`;
+    const filePath = `/opt/media/${req.query.id}`;
+    console.log(`Streaming video: ${filePath}`);
 
     fs.stat(filePath, (err, stat) => {
         if (err) {
-            console.error(`File stat error for ${filePath}.`);
-            console.error(err);
-            res.sendStatus(500);
-            return;
+            console.error("File error:", err);
+            return res.sendStatus(err.code === 'ENOENT' ? 404 : 500);
         }
 
-        let contentLength = stat.size;
+        const fileSize = stat.size;
+        const range = req.headers.range;
 
-        // Listing 4.
+        // Headers for all responses
+        res.setHeader("Content-Type", "video/mp4");
+        res.setHeader("Accept-Ranges", "bytes");
+        res.setHeader("Cache-Control", "no-cache");
+
+        // Handle HEAD requests (for preflight checks)
         if (req.method === "HEAD") {
-            res.statusCode = 200;
-            res.setHeader("accept-ranges", "bytes");
-            res.setHeader("content-length", contentLength);
-            res.end();
+            res.setHeader("Content-Length", fileSize);
+            return res.status(200).end();
         }
-        else {
-            // Listing 5.
-            let retrievedLength;
-            if (start !== undefined && end !== undefined) {
-                retrievedLength = (end + 1) - start;
+
+        // Parse range headers (for seeking)
+        let start = 0;
+        let end = fileSize - 1;
+
+        if (range) {
+            const bytesPrefix = "bytes=";
+            if (range.startsWith(bytesPrefix)) {
+                const bytesRange = range.substring(bytesPrefix.length);
+                const parts = bytesRange.split("-");
+                start = parseInt(parts[0], 10);
+                end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
             }
-            else if (start !== undefined) {
-                retrievedLength = contentLength - start;
-            }
-            else if (end !== undefined) {
-                retrievedLength = (end + 1);
-            }
-            else {
-                retrievedLength = contentLength;
-            }
-
-            // Listing 6.
-            res.statusCode = start !== undefined || end !== undefined ? 206 : 200;
-
-            res.setHeader("content-length", retrievedLength);
-
-            if (range !== undefined) {
-                res.setHeader("content-range", `bytes ${start || 0}-${end || (contentLength - 1)}/${contentLength}`);
-                res.setHeader("accept-ranges", "bytes");
-            }
-
-            // Listing 7.
-            const fileStream = fs.createReadStream(filePath, options);
-            fileStream.on("error", error => {
-                console.log(`Error reading file ${filePath}.`);
-                console.log(error);
-                res.sendStatus(500);
-            });
-
-
-            fileStream.pipe(res);
         }
+
+        // Calculate chunk size
+        const contentLength = end - start + 1;
+
+        // Set headers for partial/full content
+        if (range) {
+            res.status(206); // Partial Content
+            res.setHeader("Content-Range", `bytes ${start}-${end}/${fileSize}`);
+        } else {
+            res.status(200); // Full Content
+        }
+
+        res.setHeader("Content-Length", contentLength);
+
+        // Stream the video
+        const stream = fs.createReadStream(filePath, { start, end });
+        stream.on("error", (err) => {
+            console.error("Stream error:", err);
+            if (!res.headersSent) res.sendStatus(500);
+        });
+        stream.pipe(res);
     });
 });
 
-app.listen(3000, function () {
-    console.log("Streaimg API listening on port 3000!");
+app.listen(3000, () => {
+    console.log("Server running 3000");
 });
