@@ -1,7 +1,34 @@
 const express = require('express');
 const fs = require('graceful-fs');
+const path = require('path');
 const cors = require('cors');
 const app = express();
+
+/** iOS AVPlayer is strict about Content-Type; do not send video/mp4 for .mp3. */
+function contentTypeForMediaPath(filePath) {
+    const ext = path.extname(filePath || '').toLowerCase();
+    switch (ext) {
+        case '.mp3':
+            return 'audio/mpeg';
+        case '.m4a':
+            return 'audio/mp4';
+        case '.wav':
+            return 'audio/wav';
+        case '.aac':
+            return 'audio/aac';
+        case '.mp4':
+        case '.m4v':
+            return 'video/mp4';
+        case '.webm':
+            return 'video/webm';
+        case '.mov':
+            return 'video/quicktime';
+        case '.m3u8':
+            return 'application/vnd.apple.mpegurl';
+        default:
+            return 'application/octet-stream';
+    }
+}
 
 // CORS configuration
 const corsOptions = {
@@ -21,10 +48,11 @@ app.get('/', (req, res) => {
     res.sendFile(__dirname + '/index.html');
 });
 
-// Video streaming endpoint
+// Video / audio streaming (id = path relative to /opt/media)
 app.get('/video', (req, res) => {
     const filePath = `/opt/media/${req.query.id}`;
-    console.log(`Streaming video: ${filePath}`);
+    const contentType = contentTypeForMediaPath(filePath);
+    console.log(`Streaming media: ${filePath} (${contentType})`);
 
     fs.stat(filePath, (err, stat) => {
         if (err) {
@@ -36,7 +64,7 @@ app.get('/video', (req, res) => {
         const range = req.headers.range;
 
         // Headers for all responses
-        res.setHeader("Content-Type", "video/mp4");
+        res.setHeader("Content-Type", contentType);
         res.setHeader("Accept-Ranges", "bytes");
         res.setHeader("Cache-Control", "no-cache");
 
